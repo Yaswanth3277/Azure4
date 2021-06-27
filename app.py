@@ -1,18 +1,20 @@
 import textwrap
 from flask import Flask, render_template, request
-from werkzeug.utils import secure_filename
-import pandas as pd
 import pyodbc
-import timeit
 import redis
-import hashlib
-import pickle
 from pymongo import MongoClient
-import numpy as np
 import matplotlib.pyplot as plt
-import mpld3
+from datetime import datetime, timedelta
+from azure.storage.blob import generate_container_sas, ContainerSasPermissions, BlobServiceClient
+import io
+import base64
 
 app = Flask(__name__)
+
+account_name = "advanceddatabasesystems"
+account_key = "R1BmHYfoF6UU244ga8KFYOrID42/GS7FZb4FCKd2Pl5yzvnMYIRqhmCPj/JTwzkft6D5GsuFDVcY7bU7V3VIDQ=="
+container_name = "assignment4"
+connection_str = "DefaultEndpointsProtocol=https;AccountName=advanceddatabasesystems;AccountKey=R1BmHYfoF6UU244ga8KFYOrID42/GS7FZb4FCKd2Pl5yzvnMYIRqhmCPj/JTwzkft6D5GsuFDVcY7bU7V3VIDQ==;EndpointSuffix=core.windows.net"
 
 driver = '{ODBC Driver 17 for SQL Server}'
 server_name = 'anonymous'
@@ -47,6 +49,21 @@ mconnection_string = "mongodb://adb3:hSancCqD5F8mYEkorkOAEtoFVqY8p9sOj6kUoUOFkVR
 client = MongoClient(r"mongodb://adb3:hSancCqD5F8mYEkorkOAEtoFVqY8p9sOj6kUoUOFkVRgCDnGxfQuJ9SPnQH8xEsKW7Rn5avZn6A5X5C3PBc7VQ==@adb3.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@adb3@")
 db = client.adb3
 todos = db.quakedata_3
+
+
+def get_img_url_with_container_sas_token(blob_name):
+    container_sas_token = generate_container_sas(
+        account_name=account_name,
+        container_name=container_name,
+        account_key=account_key,
+        permission=ContainerSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=1)
+    )
+    blob_url_with_container_sas_token = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{container_sas_token}"
+    return blob_url_with_container_sas_token
+
+blob_service_client = BlobServiceClient.from_connection_string(connection_str)
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -136,11 +153,115 @@ def earthquake_clusters():
 
     labels = ["Mag(-2to-1)","Mag(-1to0)","Mag(0to1)","Mag(1to2)","Mag(2to3)","Mag(3to4)","Mag(4to5)"]
     explode = [0.2,0.2,0.2,0.2,0.2,0.2,0.2]
-    fig = plt.pie(pie_array, labels=labels, explode=explode, autopct='%.0f%%')
-    plt.savefig('static/clusters_plot.jpg')
-    plt.show()
+    plt.pie(pie_array, labels=labels, explode=explode, autopct='%.0f%%')
+    figfile = io.BytesIO()
+    plt.savefig(figfile, format='png')
+    plt.close()
+    figfile.seek(0)
+    figdata_png = base64.b64encode(figfile.getvalue())
+    files = figdata_png.decode('utf-8')
+    return render_template("mag_clusters.html", output = files)
 
-    return render_template('mag_clusters.html', earthquakes1 = earthquakes1, length1= earthquake_len1, earthquakes2 = earthquakes2, length2= earthquake_len2, earthquakes3 = earthquakes3, length3= earthquake_len3, earthquakes4 = earthquakes4, length4= earthquake_len4, earthquakes5 = earthquakes5, length5= earthquake_len5, earthquakes6 = earthquakes6, length6= earthquake_len6, earthquakes7 = earthquakes7, length7= earthquake_len7, earthquakes8 = earthquakes8, length8= earthquake_len8, earthquakes9 = earthquakes9, length9= earthquake_len9, earthquakes10 = earthquakes10, length10= earthquake_len10)
+
+@app.route('/earthquakeclustersmagtype', methods=['GET', 'POST'])
+def earthquake_clusters_magtype():
+    earthquakes1 = []
+    earthquakes2 = []
+    earthquakes3 = []
+    earthquakes4 = []
+    earthquakes5 = []
+    earthquakes6 = []
+    earthquakes7 = []
+    earthquakes8 = []
+    earthquakes9 = []
+    types = []
+    labels = []
+    cursor.execute("select distinct Magtype from graph_data")
+    for data in cursor:
+        for value in data:
+            if value != None:
+                types.append(value)
+    print(types)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[0])
+    for data in cursor:
+        earthquakes1.append(data)
+    earthquake_len1 = len(earthquakes1)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[1])
+    for data in cursor:
+        earthquakes2.append(data)
+    earthquake_len2 = len(earthquakes2)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[2])
+    for data in cursor:
+        earthquakes3.append(data)
+    earthquake_len3 = len(earthquakes3)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[3])
+    for data in cursor:
+        earthquakes4.append(data)
+    earthquake_len4 = len(earthquakes4)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[4])
+    for data in cursor:
+        earthquakes5.append(data)
+    earthquake_len5 = len(earthquakes5)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[5])
+    for data in cursor:
+        earthquakes6.append(data)
+    earthquake_len6 = len(earthquakes6)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[6])
+    for data in cursor:
+        earthquakes7.append(data)
+    earthquake_len7 = len(earthquakes7)
+
+    cursor.execute(
+        "select Time, Latitude, Longitude, Depth, Mag, Magtype, Place, LocationSource from graph_data where Magtype=?",
+        types[7])
+    for data in cursor:
+        earthquakes8.append(data)
+    earthquake_len8 = len(earthquakes8)
+
+    cursor.execute("Select Distinct Magtype from graph_data")
+    for data in cursor:
+        for value in data:
+            if value != None:
+                labels.append(value)
+
+    print(labels)
+
+    data_points = [earthquake_len1, earthquake_len2, earthquake_len3, earthquake_len4, earthquake_len5, earthquake_len6, earthquake_len7, earthquake_len8]
+    print(data_points)
+
+    plt.bar(labels, data_points)
+    plt.xlabel("Earthquake Type")
+    plt.ylabel("Count of earthquakes")
+    plt.title("Earthquake count based on Type")
+    figfile = io.BytesIO()
+    plt.savefig(figfile, format='png')
+    plt.close()
+    figfile.seek(0)
+    figdata_png = base64.b64encode(figfile.getvalue())
+    files = figdata_png.decode('utf-8')
+    return render_template("magtype_clusters.html", outputs=files)
+
 
 if __name__ == '__main__':
     app.run()
