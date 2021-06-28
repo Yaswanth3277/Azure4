@@ -32,6 +32,20 @@
             <a href="/depthmag"><input type="submit" value="Find"></a>
         </fieldset>
     </form>
+
+    <form action="{{url_for('location_source')}}" enctype=multipart/form-data method="POST" style="width:30%;">
+        <fieldset>
+            <legend>Earthquakes based on location</legend>
+            <label>Graph based on location source</label><br><br>
+            <label for="areas">Select the Area</label>
+            <select name="areas" id="areas">
+                {% for values in location %}
+                <option value="{{values}}">{{values}}</option>
+                {% endfor %}
+            </select>
+            <a href="/locationsource"><input type="submit" value="Find"></a>
+        </fieldset>
+    </form>
 </div>
 </body>
 </html>

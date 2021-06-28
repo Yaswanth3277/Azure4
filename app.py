@@ -53,24 +53,15 @@ db = client.adb3
 todos = db.quakedata_3
 
 
-def get_img_url_with_container_sas_token(blob_name):
-    container_sas_token = generate_container_sas(
-        account_name=account_name,
-        container_name=container_name,
-        account_key=account_key,
-        permission=ContainerSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=1)
-    )
-    blob_url_with_container_sas_token = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{container_sas_token}"
-    return blob_url_with_container_sas_token
-
-blob_service_client = BlobServiceClient.from_connection_string(connection_str)
-
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template("index.html")
+    location = []
+    cursor.execute("select distinct locationsource from graph_data")
+    for data in cursor:
+        for values in data:
+            location.append(values)
+    return render_template("index.html", location = location)
 
 
 @app.route('/earthquakeclusters', methods=['GET', 'POST'])
@@ -295,6 +286,31 @@ def depth_mag():
     files = figdata_png.decode('utf-8')
 
     return render_template("depth_mag.html", dmoutputs = files)
+
+
+@app.route("/locationsource", methods = ['GET', 'POST'])
+def location_source():
+    mags = []
+    if request.method == 'POST':
+        area = request.form.get('areas')
+
+        cursor.execute("select mag from graph_data where locationsource = ?", area)
+        for data in cursor:
+            for value in data:
+                mags.append(value)
+
+    plt.hist(mags)
+    plt.xlabel("Magnitude")
+    plt.ylabel("Count")
+    plt.title("Graph of Earthquakes based on LocationSource and Magnitude in")
+    figfile = io.BytesIO()
+    plt.savefig(figfile, format='png')
+    plt.close()
+    figfile.seek(0)
+    figdata_png = base64.b64encode(figfile.getvalue())
+    files = figdata_png.decode('utf-8')
+
+    return render_template('location_source.html', lsoutputs = files, area = area)
 
 
 if __name__ == '__main__':
